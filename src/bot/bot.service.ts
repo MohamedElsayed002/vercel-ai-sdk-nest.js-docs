@@ -5,16 +5,18 @@ import { Bot, BotDocument } from './schemas/bot.schema';
 import { Model } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { createGoogleGenerativeAI, GoogleGenerativeAIProviderOptions } from '@ai-sdk/google';
+import { createGoogleGenerativeAI, GoogleGenerativeAIProviderOptions, GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google';
 import { GoogleAICacheManager } from '@google/generative-ai/server';
 import { generateText } from 'ai';
+import { googleTools } from '@ai-sdk/google/internal';
+
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!
 })
 
 const cacheManager = new GoogleAICacheManager(
-  "AIzaSyDKHJ2nBTpSvcUAnQKAIAw_6ZLahXiQ4WA"
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY!
 )
 
 const FootRecipe = `
@@ -336,7 +338,7 @@ export class BotService {
         ],
         ttlSeconds: 60 * 5
       })
-  
+
       const { text: veggieLasangaRecipe } = await generateText({
         model: google(model),
         prompt: "Write a vegetarian lasagna recipe for 4 people",
@@ -346,7 +348,7 @@ export class BotService {
           }
         }
       })
-  
+
       const { text: meatLasangaRecipe } = await generateText({
         model: google(model),
         prompt: 'Write a meat lasagna recipe for 12 people',
@@ -356,16 +358,66 @@ export class BotService {
           }
         }
       })
-  
+
       return {
         cachedContent: cachedContent,
         response2: veggieLasangaRecipe,
         response: meatLasangaRecipe,
       }
-    }catch(error) {
+    } catch (error) {
       return {
         error: error
       }
+    }
+  }
+
+
+  // Code Execution 
+  async codeExec() {
+    try {
+      const { text, toolCalls, toolResults } = await generateText({
+        model: google("gemini-2.5-flash"),
+        tools: { code_execution: google.tools.codeExecution({}) },
+        prompt: "Use python to calcualte the 20th fibonacci number."
+      })
+
+      return {
+        text,
+        toolCalls,
+        toolResults
+      }
+    } catch (error) {
+      return error
+    }
+  }
+
+  // Google Search
+  async googleSearch() {
+    try {
+      const { text, sources, providerMetadata } = await generateText({
+        model: google("gemini-2.5-flash"),
+        tools: {
+          google_search: google.tools.googleSearch({})
+        },
+        prompt: 'what is the latest 5 news happend in Egypt, and USA' + "You must include the date of each article"
+      })
+
+
+      const metadata = providerMetadata?.google as
+        | GoogleGenerativeAIProviderMetadata
+        | undefined;
+      const groundingMetadata = metadata?.groundingMetadata;
+      const safetyRatings = metadata?.safetyRatings;
+
+      return {
+        text,
+        sources,
+        providerMetadata,
+        metadata
+      }
+
+    } catch (error) {
+      return error
     }
   }
 

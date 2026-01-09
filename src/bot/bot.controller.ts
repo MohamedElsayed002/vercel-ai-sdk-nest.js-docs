@@ -51,6 +51,16 @@ export class BotController {
     return this.botService.generateFood()
   }
 
+  @Get("code-execution")
+  async CodeExec() {
+    return this.botService.codeExec()
+  }
+
+  @Get("google-search")
+  async GoogleSearch() {
+    return this.botService.googleSearch()
+  }
+
   @Get('test-my-app')
   testApp() {
     return `${process.env.SECRET_KEY}`;

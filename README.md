@@ -348,3 +348,120 @@ const result = await generateText({
 });
 
 ```
+---
+
+## File Search
+
+The `File search Tool` lets Gemini retrieve context from your own documents that you have indexed in File Search stores. Only Gemini 2.5 and Gemini 3 models support this features
+
+```ts
+  import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
+
+const { text, sources } = await generateText({
+  model: google('gemini-2.5-pro'),
+  tools: {
+    file_search: google.tools.fileSearch({
+      fileSearchStoreNames: [
+        'projects/my-project/locations/us/fileSearchStores/my-store',
+      ],
+      metadataFilter: 'author = "Robert Graves"',
+      topK: 8,
+    }),
+  },
+  prompt: "Summarise the key themes of 'I, Claudius'.",
+});
+```
+
+File Search responses include citations via the normal `sources` field and expose raw `grounding metadata` in `providerMetadata.google.groundingMetadata`.
+
+---
+
+## URL Context 
+
+Google provides a provider-defined URL context tool
+
+The URL context tool allows you to provide specific URLs that you want the model to analyze 
+directly in from the prompt 
+
+```ts
+import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
+
+const { text, sources, providerMetadata } = await generateText({
+  model: google('gemini-2.5-flash'),
+  prompt: `Based on the document: https://ai.google.dev/gemini-api/docs/url-context.
+          Answer this question: How many links we can consume in one request?`,
+  tools: {
+    url_context: google.tools.urlContext({}),
+  },
+});
+
+const metadata = providerMetadata?.google as
+  | GoogleGenerativeAIProviderMetadata
+  | undefined;
+const groundingMetadata = metadata?.groundingMetadata;
+const urlContextMetadata = metadata?.urlContextMetadata;
+```
+
+---
+
+## Combine URL Context with Search Grounding 
+
+You can combine the URL context tool with search grounding to provide the model with the latest information from the web
+
+
+```ts
+  import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
+
+const { text, sources, providerMetadata } = await generateText({
+  model: google('gemini-2.5-flash'),
+  prompt: `Based on this context: https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai, tell me how to use Gemini with AI SDK.
+    Also, provide the latest news about AI SDK V5.`,
+  tools: {
+    google_search: google.tools.googleSearch({}),
+    url_context: google.tools.urlContext({}),
+  },
+});
+
+const metadata = providerMetadata?.google as
+  | GoogleGenerativeAIProviderMetadata
+  | undefined;
+const groundingMetadata = metadata?.groundingMetadata;
+const urlContextMetadata = metadata?.urlContextMetadata;
+```
+
+---
+
+
+## Google Maps Grounding 
+
+With `Google Maps Grounding`, the model has access to Google Maps data for locaiton-aware responses. This enables providing local data and geospatial context, such as finding nearby restaurants.
+
+```ts
+import { google } from '@ai-sdk/google';
+import { GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google';
+import { generateText } from 'ai';
+
+const { text, sources, providerMetadata } = await generateText({
+  model: google('gemini-2.5-flash'),
+  tools: {
+    google_maps: google.tools.googleMaps({}),
+  },
+  providerOptions: {
+    google: {
+      retrievalConfig: {
+        latLng: { latitude: 34.090199, longitude: -117.881081 },
+      },
+    },
+  },
+  prompt:
+    'What are the best Italian restaurants within a 15-minute walk from here?',
+});
+
+const metadata = providerMetadata?.google as
+  | GoogleGenerativeAIProviderMetadata
+  | undefined;
+const groundingMetadata = metadata?.groundingMetadata;
+```
