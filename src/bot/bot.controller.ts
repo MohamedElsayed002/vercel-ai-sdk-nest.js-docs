@@ -46,6 +46,11 @@ export class BotController {
     return this.botService.getAllChats();
   }
 
+  @Get("caching-food")
+  async CachedFoot() {
+    return this.botService.generateFood()
+  }
+
   @Get('test-my-app')
   testApp() {
     return `${process.env.SECRET_KEY}`;
