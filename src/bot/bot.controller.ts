@@ -5,12 +5,9 @@ import {
   HttpCode,
   HttpStatus,
   Header,
-  Param,
   Body,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { BotService } from './bot.service';
-import { Bot as BotInterface } from './interfaces/bot.interface';
 import { BotDocument } from './schemas/bot.schema';
 // const { LazyModule } = await import("./")
 
@@ -46,19 +43,19 @@ export class BotController {
     return this.botService.getAllChats();
   }
 
-  @Get("caching-food")
+  @Get('caching-food')
   async CachedFoot() {
-    return this.botService.generateFood()
+    return this.botService.generateFood();
   }
 
-  @Get("code-execution")
+  @Get('code-execution')
   async CodeExec() {
-    return this.botService.codeExec()
+    return this.botService.codeExec();
   }
 
-  @Get("google-search")
+  @Get('google-search')
   async GoogleSearch() {
-    return this.botService.googleSearch()
+    return this.botService.googleSearch();
   }
 
   @Get('test-my-app')

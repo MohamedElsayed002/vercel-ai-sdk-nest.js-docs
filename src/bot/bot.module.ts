@@ -8,9 +8,9 @@ import { CacheModule } from '@nestjs/cache-manager';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Bot.name, schema: BotSchema }]),
-    CacheModule.register()
+    CacheModule.register(),
   ],
   controllers: [BotController],
   providers: [BotService],
 })
-export class BotModule { }
+export class BotModule {}

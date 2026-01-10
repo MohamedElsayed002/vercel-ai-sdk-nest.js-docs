@@ -5,19 +5,21 @@ import { Bot, BotDocument } from './schemas/bot.schema';
 import { Model } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { createGoogleGenerativeAI, GoogleGenerativeAIProviderOptions, GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google';
+import {
+  createGoogleGenerativeAI,
+  GoogleGenerativeAIProviderOptions,
+  GoogleGenerativeAIProviderMetadata,
+} from '@ai-sdk/google';
 import { GoogleAICacheManager } from '@google/generative-ai/server';
 import { generateText } from 'ai';
-import { googleTools } from '@ai-sdk/google/internal';
-
 
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!
-})
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
+});
 
 const cacheManager = new GoogleAICacheManager(
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY!
-)
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
+);
 
 const FootRecipe = `
 
@@ -258,8 +260,6 @@ This knowledge base is designed to support many different food-related prompts i
 
 `;
 
-
-
 @Injectable()
 export class BotService {
   // private readonly bots: Bot[] = [];
@@ -269,8 +269,8 @@ export class BotService {
   constructor(
     private lazyModuleLoader: LazyModuleLoader,
     @InjectModel(Bot.name) private botModel: Model<Bot>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
-  ) { }
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   hello(): string {
     return 'Hello World';
@@ -284,14 +284,13 @@ export class BotService {
     return `Bot ${id}`;
   }
 
-  async createBot(bot: Bot): Promise<{ text: string, providerMetadata: string, reason: string }> {
-
-    await this.botModel.create({ role: "user", content: bot.content })
-
-
+  async createBot(
+    bot: Bot,
+  ): Promise<{ text: string; providerMetadata: string; reason: string }> {
+    await this.botModel.create({ role: 'user', content: bot.content });
 
     const { text, reasoning, providerMetadata } = await generateText({
-      model: google("gemini-3-flash-preview"),
+      model: google('gemini-3-flash-preview'),
       prompt: bot.content,
       temperature: 0.7,
       maxOutputTokens: 1000,
@@ -300,31 +299,30 @@ export class BotService {
           thinkingConfig: {
             thinkingBudget: 200,
             thinkingLevel: 'high',
-            includeThoughts: true
+            includeThoughts: true,
           },
           safetySettings: [
             {
               category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_LOW_AND_ABOVE'
-            }
-          ]
-        } as GoogleGenerativeAIProviderOptions
+              threshold: 'BLOCK_LOW_AND_ABOVE',
+            },
+          ],
+        } as GoogleGenerativeAIProviderOptions,
       },
-    })
+    });
 
-
-    await this.botModel.create({ role: 'system', content: text })
+    await this.botModel.create({ role: 'system', content: text });
 
     // Invalidate cache when new chat is created
     await this.cacheManager.del(this.CACHE_KEY);
     return {
       text,
       providerMetadata: JSON.stringify(providerMetadata),
-      reason: JSON.stringify(reasoning)
-    }
+      reason: JSON.stringify(reasoning),
+    };
   }
 
-  // Caching the messages example 
+  // Caching the messages example
   async generateFood() {
     try {
       const model = 'gemini-2.5-flash';
@@ -333,61 +331,60 @@ export class BotService {
         contents: [
           {
             role: 'user',
-            parts: [{ text: FootRecipe }]
-          }
+            parts: [{ text: FootRecipe }],
+          },
         ],
-        ttlSeconds: 60 * 5
-      })
+        ttlSeconds: 60 * 5,
+      });
 
       const { text: veggieLasangaRecipe } = await generateText({
         model: google(model),
-        prompt: "Write a vegetarian lasagna recipe for 4 people",
+        prompt: 'Write a vegetarian lasagna recipe for 4 people',
         providerOptions: {
           google: {
-            cachedContent
-          }
-        }
-      })
+            cachedContent,
+          },
+        },
+      });
 
       const { text: meatLasangaRecipe } = await generateText({
         model: google(model),
         prompt: 'Write a meat lasagna recipe for 12 people',
         providerOptions: {
           google: {
-            cachedContent
-          }
-        }
-      })
+            cachedContent,
+          },
+        },
+      });
 
       return {
         cachedContent: cachedContent,
         response2: veggieLasangaRecipe,
         response: meatLasangaRecipe,
-      }
+      };
     } catch (error) {
       return {
-        error: error
-      }
+        error: error,
+      };
     }
   }
 
-
-  // Code Execution 
+  // Code Execution
   async codeExec() {
     try {
       const { text, toolCalls, toolResults } = await generateText({
-        model: google("gemini-2.5-flash"),
+        model: google('gemini-2.5-flash'),
         tools: { code_execution: google.tools.codeExecution({}) },
-        prompt: "Use python to calcualte the 20th fibonacci number."
-      })
+        prompt: 'Use python to calcualte the 20th fibonacci number.',
+      });
 
       return {
         text,
         toolCalls,
-        toolResults
-      }
+        toolResults,
+      };
     } catch (error) {
-      return error
+      return error;
     }
   }
 
@@ -395,35 +392,37 @@ export class BotService {
   async googleSearch() {
     try {
       const { text, sources, providerMetadata } = await generateText({
-        model: google("gemini-2.5-flash"),
+        model: google('gemini-2.5-flash'),
         tools: {
-          google_search: google.tools.googleSearch({})
+          google_search: google.tools.googleSearch({}),
         },
-        prompt: 'what is the latest 5 news happend in Egypt, and USA' + "You must include the date of each article"
-      })
-
+        prompt:
+          'what is the latest 5 news happend in Egypt, and USA' +
+          'You must include the date of each article',
+      });
 
       const metadata = providerMetadata?.google as
         | GoogleGenerativeAIProviderMetadata
         | undefined;
-      const groundingMetadata = metadata?.groundingMetadata;
-      const safetyRatings = metadata?.safetyRatings;
+      // const groundingMetadata = metadata?.groundingMetadata;
+      // const safetyRatings = metadata?.safetyRatings;
 
       return {
         text,
         sources,
         providerMetadata,
-        metadata
-      }
-
+        metadata,
+      };
     } catch (error) {
-      return error
+      return error;
     }
   }
 
   async getAllChats(): Promise<BotDocument[]> {
     // Try to get from cache first
-    const cachedChats = await this.cacheManager.get<BotDocument[]>(this.CACHE_KEY);
+    const cachedChats = await this.cacheManager.get<BotDocument[]>(
+      this.CACHE_KEY,
+    );
 
     if (cachedChats) {
       return cachedChats;

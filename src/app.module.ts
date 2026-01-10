@@ -1,20 +1,24 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { BotModule } from './bot/bot.module';
 import { LoggerMiddleware } from './logger.middleware';
 import { BotController } from './bot/bot.controller';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { GeminiModule } from './gemini/gemini.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
     MongooseModule.forRoot(process.env.MONGO_URL!),
-    BotModule
+    BotModule,
+    GeminiModule,
   ],
 })
 export class AppModule implements NestModule {
