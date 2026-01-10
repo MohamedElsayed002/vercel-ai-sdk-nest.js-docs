@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GeminiModule } from './gemini/gemini.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     MongooseModule.forRoot(process.env.MONGO_URL!),
     BotModule,
     GeminiModule,
+    ChatModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -191,4 +191,15 @@ export class GeminiService {
       return error;
     }
   }
+
+  calculateCost(usage: UsageMetadata, model: string = 'gemini-2.5-flash'): number {
+    const pricing = GeminiConfig.pricing[model];
+    if (!pricing) return 0;
+
+    const inputCost = (usage.promptTokens / 1000000) * pricing.inputPer1M;
+    const outputCost = (usage.completionTokens / 1000000) * pricing.outputPer1M;
+    const cachedSavings = (usage.cachedTokens / 1000000) * pricing.inputPer1M * pricing.cachedDiscount;
+
+    return inputCost + outputCost - cachedSavings;
+  }
 }
