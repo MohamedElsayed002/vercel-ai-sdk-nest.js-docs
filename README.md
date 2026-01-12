@@ -465,3 +465,200 @@ const metadata = providerMetadata?.google as
   | undefined;
 const groundingMetadata = metadata?.groundingMetadata;
 ```
+
+
+---
+
+# Agents with Vercel AI SDK
+
+Agents are large language models (LLMs) that use tools in a loop to accomplish tasks
+
+These components work together
+- LLMs process input and decide in the next action
+- Tools extend capabilities beyond text generation (reading files, calling APIs, writing to database)
+- Loop orchestrates execution through:
+  - Context Management - Mainting conversation history and deciding what the model sees (input) at each step
+  - Stopping conditions - Determining when the loop (task) is complete
+
+---
+
+## ToolLoopAgent Class
+
+The ToolLoopAgent class handles these three components. Here's an agent that uses multiple tools in a loop to accomplish a task:
+
+```ts
+import { ToolLoopAgent, stepCountIs, tool } from 'ai';
+import { google } from "@ai-sdk/google";
+import { z } from 'zod';
+
+const weatherAgent = new ToolLoopAgent({
+  model: google("gemini-3-pro-image"),
+  tools: {
+    weather: tool({
+      description: 'Get the weather in a location (in Fahrenheit)',
+      inputSchema: z.object({
+        location: z.string().describe('The location to get the weather for'),
+      }),
+      execute: async ({ location }) => ({
+        location,
+        temperature: 72 + Math.floor(Math.random() * 21) - 10,
+      }),
+    }),
+    convertFahrenheitToCelsius: tool({
+      description: 'Convert temperature from Fahrenheit to Celsius',
+      inputSchema: z.object({
+        temperature: z.number().describe('Temperature in Fahrenheit'),
+      }),
+      execute: async ({ temperature }) => {
+        const celsius = Math.round((temperature - 32) * (5 / 9));
+        return { celsius };
+      },
+    }),
+  },
+  // Agent's default behavior is to stop after a maximum of 20 steps
+  // stopWhen: stepCountIs(20),
+});
+
+const result = await weatherAgent.generate({
+  prompt: 'What is the weather in San Francisco in celsius?',
+});
+
+console.log(result.text); // agent's final answer
+console.log(result.steps); // steps taken by the agent
+```
+
+
+## Structured Workflows
+
+Agents are flexible and powerful, but non-deterministic. When you need reliable, repeatable
+outcomes with explicit control flow use core functions with structured workflow patterns
+combining:
+
+- Conditional statements for explicit branching
+- Standard functions for reusable logic
+- Error handling for robustness 
+- Explicit control flow for predictability
+
+---
+
+## Building Agents
+
+The Agent class provides a strctured way to encapsluate LLM configuration, tools, and behavior into reusable components. It handles the agent loop for you, allowing the LLM to call tools multiple times in sequence to accomplish complex tasks. Define agents once and use them across application
+
+### Why Use the ToolLoopAgent Class?
+
+When building AI applications, you often need to:
+
+- Reuse configuration: Same model settings, tools, and prompts across different parts of your applicaiton
+- Maitain consistency: Ensure the same behavior and capabilities throughtout your codebase
+- Simplify API routes: Reduce Boilerplate in your endpoints
+- Type safety: Get full Typescript support for your agent's tools and outputs
+
+The ToolLoopAgent class provides a single place to define your agent's behavior
+
+```ts
+import { ToolLoopAgent, tool } from 'ai';
+import { google } from "@ai-sdk/google";
+import { z } from 'zod';
+
+const codeAgent = new ToolLoopAgent({
+  model: google("gemini-3-pro-image"),
+  tools: {
+    runCode: tool({
+      description: 'Execute Python code',
+      inputSchema: z.object({
+        code: z.string(),
+      }),
+      execute: async ({ code }) => {
+        // Execute code and return result
+        return { output: 'Code executed successfully' };
+      },
+    }),
+  },
+  stopWhen: stepCountIs(20), // Allow up to 20 steps
+});
+```
+
+
+I can also force the use of specific tool
+
+```ts
+import { ToolLoopAgent } from 'ai';
+import { google } from "@ai-sdk/google";
+
+const agent = new ToolLoopAgent({
+  model: google('gemini-2.5-flash'),
+  tools: {
+    weather: weatherTool,
+        cityAttractions: attractionsTool,
+  },
+  toolChoice: {
+    type: 'tool',
+    toolName:'weather' 
+  }
+})
+```
+
+### Structured Output 
+
+Define structured output schemas 
+
+```ts
+  import { ToolLoopAgent, Output, stepCountIs } from 'ai';
+import { google } from "@ai-sdk/google";
+import { z } from 'zod';
+
+const analysisAgent = new ToolLoopAgent({
+  model: google("gemini-3-pro-image"),
+  output: Output.object({
+    schema: z.object({
+      sentiment: z.enum(['positive', 'neutral', 'negative']),
+      summary: z.string(),
+      keyPoints: z.array(z.string()),
+    }),
+  }),
+  stopWhen: stepCountIs(10),
+});
+
+const { output } = await analysisAgent.generate({
+  prompt: 'Analyze customer feedback from the last quarter',
+});
+```
+
+
+### Tool Usage Insturctions 
+
+Guide how the agent should use available tools:
+
+```ts
+const researchAgent = new ToolLoopAgent({
+  model: google("gemini-3-pro-image"),
+  instructions: `You are a research assistant with access to search and document tools.
+
+  When researching:
+  1. Always start with a broad search to understand the topic
+  2. Use document analysis for detailed information
+  3. Cross-reference multiple sources before drawing conclusions
+  4. Cite your sources when presenting information
+  5. If information conflicts, present both viewpoints`,
+  tools: {
+    webSearch,
+    analyzeDocument,
+    extractQuotes,
+  },
+});
+```
+---
+
+## Loop Control 
+
+https://ai-sdk.dev/docs/agents/loop-control
+
+## Configuring Call Options 
+
+https://ai-sdk.dev/docs/agents/configuring-call-options
+
+--- 
+
+https://vercel.com/blog/ai-sdk-6
+https://www.anthropic.com/engineering/building-effective-agents

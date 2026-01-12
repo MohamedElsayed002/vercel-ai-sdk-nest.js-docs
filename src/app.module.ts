@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { FileAnalysisService } from './file-analysis/file-analysis.service';
 import { FileAnalysisModule } from './file-analysis/file-analysis.module';
 import { CodeExecutionModule } from './code-execution/code-execution.module';
+import { AiAgentModule } from './ai-agent/ai-agent.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CodeExecutionModule } from './code-execution/code-execution.module';
     ChatModule,
     FileAnalysisModule,
     CodeExecutionModule,
+    AiAgentModule,
   ],
   providers: [FileAnalysisService],
 })
