@@ -52,6 +52,8 @@ export class ChatService {
         }
     }
 
+
+    // Better Choice. for user experience
     async streamChat(request: ChatRequestDto): Promise<Observable<MessageEvent>> {
         this.logger.log(`Streaming chat request ${request.message.substring(0,50)}`)
 

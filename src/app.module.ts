@@ -9,6 +9,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ChatModule } from './chat/chat.module';
 import { FileAnalysisService } from './file-analysis/file-analysis.service';
 import { FileAnalysisModule } from './file-analysis/file-analysis.module';
+import { CodeExecutionModule } from './code-execution/code-execution.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FileAnalysisModule } from './file-analysis/file-analysis.module';
     GeminiModule,
     ChatModule,
     FileAnalysisModule,
+    CodeExecutionModule,
   ],
   providers: [FileAnalysisService],
 })
