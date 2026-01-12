@@ -7,6 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { GeminiModule } from './gemini/gemini.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ChatModule } from './chat/chat.module';
+import { FileAnalysisService } from './file-analysis/file-analysis.service';
+import { FileAnalysisModule } from './file-analysis/file-analysis.module';
 
 @Module({
   imports: [
@@ -21,7 +23,9 @@ import { ChatModule } from './chat/chat.module';
     BotModule,
     GeminiModule,
     ChatModule,
+    FileAnalysisModule,
   ],
+  providers: [FileAnalysisService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

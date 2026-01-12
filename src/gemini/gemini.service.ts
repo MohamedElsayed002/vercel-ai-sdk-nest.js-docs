@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from "fs";
+
 import {
   GeminiResponse,
   GeminiOptions,
@@ -26,11 +28,12 @@ export class GeminiService {
     prompt: string,
     options: GeminiOptions = {},
   ): Promise<GeminiResponse> {
+
     const {
       model = GeminiConfig.models.chat,
       useWebSearch = false,
       useCodeExecution = false,
-      // fileData = null,
+      fileData = null,
       thinkingBudget = null,
       includeThoughts = false,
       temperature = 0.7,
@@ -39,6 +42,7 @@ export class GeminiService {
 
     try {
       this.logger.log(`Generating content with model ${model}`);
+
       const tools: any = {};
 
       if (useWebSearch) {
@@ -49,17 +53,45 @@ export class GeminiService {
         tools.code_execution = google.tools.codeExecution({});
       }
 
-      const messages: any[] = [];
+      // ------------------------
+      // 1. Build message content
+      // ------------------------
+      let content: any[] | string;
 
-      messages.push({
-        role: 'user',
-        content: prompt,
-      });
+      if (fileData) {
+        let fileBuffer: Buffer;
 
-      // Build Provider options
-      const providerOptions: any = {
-        google: {},
-      };
+        if (fileData.isPath) {
+          fileBuffer = fs.readFileSync(fileData.data as string);
+        } else if (Buffer.isBuffer(fileData.data)) {
+          fileBuffer = fileData.data;
+        } else {
+          throw new Error("Invalid file data supplied");
+        }
+
+        content = [
+          { type: "text", text: "Summarize for me this pdf " },
+          {
+            type: "file",
+            data: fileBuffer,
+            mediaType: fileData.mimeType,
+          },
+        ];
+      } else {
+        content = prompt;
+      }
+
+      const messages = [
+        {
+          role: "user",
+          content,
+        },
+      ];
+
+      // ------------------------
+      // 2. Provider options
+      // ------------------------
+      const providerOptions: any = { google: {} };
 
       if (thinkingBudget !== null || includeThoughts) {
         providerOptions.google.thinkingConfig = {};
@@ -73,15 +105,21 @@ export class GeminiService {
         }
       }
 
+      // ------------------------
+      // 3. Call model
+      // ------------------------
       const result = await generateText({
         model: google(model),
-        messages,
-        tools: Object.keys(tools).length > 0 ? tools : undefined,
+        messages: messages as any, // Type assertion to bypass strict typing issue
+        tools: Object.keys(tools).length ? tools : undefined,
         providerOptions,
         temperature,
         maxOutputTokens: maxTokens,
       });
 
+      // ------------------------
+      // 4. Parse response
+      // ------------------------
       const googleMetadata = result.providerMetadata?.google as any;
 
       const usage: UsageMetadata = {
@@ -90,32 +128,26 @@ export class GeminiService {
         // @ts-expect-error
         completionTokens: result.usage?.completionTokens || 0,
         totalTokens: result.usage?.totalTokens || 0,
-        cachedTokens: 0,
+        cachedTokens: googleMetadata?.usageMetadata?.cachedContentTokenCount || 0,
       };
-
-      if (googleMetadata?.usageMetadata?.cachedContentTokenCount) {
-        usage.cachedTokens =
-          googleMetadata.usageMetadata.cachedContentTokenCount;
-      }
-
-      const sources = googleMetadata?.groundingMetadata?.groundingChunks || [];
-      const codeExecution = googleMetadata?.codeExecutionResults || [];
 
       return {
         text: result.text,
-        sources,
-        codeExecution,
+        sources: googleMetadata?.groundingMetadata?.groundingChunks || [],
+        codeExecution: googleMetadata?.codeExecutionResults || [],
         usage,
         reasoning: result.reasoning || null,
         toolCalls: result.toolCalls || [],
         toolResults: result.toolResults || [],
         rawResponse: result,
       };
+
     } catch (error) {
-      this.logger.error(`Gemini API Error ${error.message}`);
+      this.logger.error(`Gemini API Error: ${error.message}`);
       throw error;
     }
   }
+
 
   async streamContent(prompt: string, options: GeminiOptions = {}) {
     const {

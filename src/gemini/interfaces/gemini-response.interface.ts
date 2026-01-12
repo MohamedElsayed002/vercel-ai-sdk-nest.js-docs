@@ -30,13 +30,14 @@ export interface GeminiResponse {
 export interface FileData {
   data: string | Buffer;
   mimeType: string;
+  isPath?: string;
 }
 
 export interface GeminiOptions {
   model?: string;
   useWebSearch?: boolean;
   useCodeExecution?: boolean;
-  // fileData?: FileData;
+  fileData?: FileData;
   thinkingBudget?: number;
   includeThoughts?: boolean;
   temperature?: number;
